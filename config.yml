@@ -1,6 +1,7 @@
 release: "latest"
 repository:
-    id: "internal"
+    id: internal
     url: "MAVEN REPO URL HERE"
+main_class_length: 3
 plugins:
     - CommandBook
