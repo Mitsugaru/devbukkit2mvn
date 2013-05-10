@@ -58,7 +58,6 @@ def export_to_maven(repo_url, repo_id, group_id, artifact_id, version, filename)
     -Dversion=" + version +"  \
     -Dpackaging=jar \
     -Dfile=\"" + os.path.abspath(filename) +"\""
-  print command
   return os.system(command)
 
 # Main class
@@ -119,7 +118,7 @@ class MainClass:
       
       # Check if we're done
       if len(self.target_plugins) == 0:
-        print "Done"
+        print "=== Done"
         break
 
       slug = slug_item["slug"]
@@ -140,49 +139,52 @@ class MainClass:
         continue
         
       if found_slug:
-        print "=== Attempting: " + slug
+        print "=== Attempting: " + slug + " (" + self.release_flag + ")"
       elif found_name:
-        print "=== Attempting: " + plugin_name
+        print "=== Attempting: " + plugin_name + " (" + self.release_flag + ")"
 
       #TODO from config, allow specifiers for latest, stable, beta, alpha versions
       #Use API to get these versions
-      plugin_details = parse_plugin_details(slug, self.release_flag)
+      try:
+        plugin_details = parse_plugin_details(slug, self.release_flag)
+  
+        # Validate plugin
+        if validate_plugin_item(plugin_details):
+          main_class_path = plugin_details["main"]
+          short_cutoff = findnth(main_class_path, ".", self.short_main_length)
+          short_main = main_class_path
+  
+          # Need to check in case of ridiculously short main class paths
+          if short_cutoff > 0:
+            short_main = main_class_path[:short_cutoff]
+              
+          # Grab version(s)
+          for version_details in plugin_details["versions"]:
+            download_link = version_details["download"]
+            filename = version_details["filename"]
+            version = version_details["version"]
+              
+            extension = os.path.splitext(filename)[1]
 
-      # Validate plugin
-      if validate_plugin_item(plugin_details):
-        main_class_path = plugin_details["main"]
-        short_cutoff = findnth(main_class_path, ".", self.short_main_length)
-        short_main = main_class_path
-
-        # Need to check in case of ridiculously short main class paths
-        if short_cutoff > 0:
-          short_main = main_class_path[:short_cutoff]
-            
-        # Grab version(s)
-        for version_details in plugin_details["versions"]:
-          download_link = version_details["download"]
-          filename = version_details["filename"]
-          version = version_details["version"]
-            
-          extension = os.path.splitext(filename)[1]
-            
-          if extension != "jar":
-            print "Skipping " + plugin_name + " v" + version + " because it is not a jar..."
-            continue
-            
-          print filename + " : " + version + " : " + download_link
-          # download file
-          download_plugin(filename, download_link)
-          # export jar to maven
-          export_to_maven(self.repository_url, self.repository_id, short_main, plugin_name, version, filename)
-          # delete downloaded file
-          os.remove(filename)
-      else:
-        if found_slug:
-          self.target_plugins.append(slug.lower())
-        elif found_name:
-          self.target_plugins.append(plugin_name.lower())
-        print "!!! Errors in validating '" + slug + "' | '" + plugin_name + "' @ " + plugin_website
+            if extension != ".jar":
+              print "!!! Skipping " + plugin_name + " v" + version + " because it is not a jar..."
+              continue
+              
+            print filename + " : " + version + " : " + download_link
+            # download file
+            download_plugin(filename, download_link)
+            # export jar to maven
+            export_to_maven(self.repository_url, self.repository_id, short_main, plugin_name, version, filename)
+            # delete downloaded file
+            os.remove(filename)
+        else:
+          if found_slug:
+            self.target_plugins.append(slug.lower())
+          elif found_name:
+            self.target_plugins.append(plugin_name.lower())
+          print "!!! Errors in validating '" + slug + "' | '" + plugin_name + "' @ " + plugin_website
+      except urllib2.HTTPError, err:
+        print "!!! HTTP error: " + str(err.code) + " : " + err.reason
 
     # Notify user of any plugins we could not download
     if len(self.target_plugins) != 0:
