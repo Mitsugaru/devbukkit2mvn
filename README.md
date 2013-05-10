@@ -4,6 +4,12 @@ devbukkit2mvn
 Python script for parsing plugins from DevBukkit, downloading binaries, and exporting them to a maven repository.
 
 Uses [Bukget API v3](http://bukget.org/pages/docs/API3.html).
+
+Dependencies
+----
+
+* [PyYAML](http://pyyaml.org/)
+
 Usage
 ----
 
